@@ -1,4 +1,4 @@
-# Arth -- Adversarial Red Teaming Harness
+# Arth - Adversarial Red Teaming Harness for Open Source Models
 
 **Mechanistic interpretability meets adversarial red teaming.**
 

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arth-mech-interp"
+version = "0.1.0"
+description = "Mechanistic interpretability red teaming toolkit for open-source language models"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1.0",
+    "transformer-lens>=1.14.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "einops>=0.7.0",
+    "numpy>=1.24.0",
+    "tqdm>=4.65.0",
+    "jaxtyping>=0.2.25",
+    "huggingface_hub>=0.20.0",
+]
+
+[project.optional-dependencies]
+nnsight = ["nnsight>=0.2.0"]
+sae = ["sae-lens>=3.0.0"]
+dashboard = ["dash>=2.14.0", "plotly>=5.18.0", "dash-bootstrap-components>=1.5.0"]
+finetune = ["peft>=0.7.0", "bitsandbytes>=0.41.0"]
+openai = ["openai>=1.0"]
+vllm = ["vllm>=0.3.0"]
+all = [
+    "arth-mech-interp[nnsight,sae,dashboard,finetune,openai,vllm]",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+arth = "arth.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["arth*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

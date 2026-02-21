@@ -1,0 +1,15 @@
+model:
+  name: "gpt2"
+  device: "cuda"
+  dtype: "float16"
+techniques:
+  - refusal_direction
+  - steering_vectors
+  - logit_lens
+datasets:
+  - violence_weapons
+  - cybersecurity
+  - deception_fraud
+output_dir: "results"
+batch_size: 32
+max_new_tokens: 128

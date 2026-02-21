@@ -5,6 +5,7 @@
 A research toolkit for probing, analyzing, and stress-testing the safety mechanisms of open-source language models through activation-level interventions.
 
 ---
+<img width="1835" height="1238" alt="image" src="https://github.com/user-attachments/assets/9abc1873-a0a4-4088-925f-3d7af9cd192e" />
 
 ## Overview
 

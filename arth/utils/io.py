@@ -34,14 +34,30 @@ def save_vector(
 def load_vector(path: Path) -> tuple[Tensor, dict]:
     """Load a tensor and metadata from a ``.pt`` file saved by :func:`save_vector`.
 
+    Uses ``weights_only=True`` for security.  Falls back to
+    ``weights_only=False`` only for legacy files that contain
+    non-standard Python objects, with a warning.
+
     Args:
         path: Path to the ``.pt`` file.
 
     Returns:
         Tuple of (tensor, metadata).
     """
+    import warnings
+
     path = Path(path)
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    try:
+        payload = torch.load(path, map_location="cpu", weights_only=True)
+    except Exception:
+        warnings.warn(
+            f"Could not load {path} with weights_only=True (may contain "
+            f"non-standard objects). Falling back to weights_only=False. "
+            f"Only load files you trust.",
+            stacklevel=2,
+        )
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+
     return payload["tensor"], payload.get("metadata", {})
 
 

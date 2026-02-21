@@ -41,7 +41,7 @@ class SAEAnalysis(BaseTechnique):
         )
 
         # Try to load SAE via sae-lens
-        sae = self._try_load_sae(backend)
+        sae = self._try_load_sae(backend, layers=layers)
 
         if sae is not None:
             return self._extract_with_sae(
@@ -52,13 +52,17 @@ class SAEAnalysis(BaseTechnique):
                 backend, harmful_acts, harmless_acts, output_dir
             )
 
-    def _try_load_sae(self, backend) -> Any | None:
-        """Attempt to load a sparse autoencoder via sae-lens."""
+    def _try_load_sae(self, backend, layers: list[int] | None = None) -> Any | None:
+        """Attempt to load a sparse autoencoder via sae-lens.
+
+        Tries the first layer in *layers*, falling back to layer 0.
+        """
+        target_layer = layers[0] if layers else 0
         try:
             from sae_lens import SAE as SAELens
             sae = SAELens.from_pretrained(
                 release=f"{backend.config.name}-res-jb",
-                sae_id="blocks.0.hook_resid_post",
+                sae_id=f"blocks.{target_layer}.hook_resid_post",
                 device=backend.config.device,
             )
             return sae

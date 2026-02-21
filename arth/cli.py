@@ -24,11 +24,14 @@ def _add_provider_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
-        "--api-key",
+        "--api-key-env",
         default=None,
+        metavar="ENV_VAR",
         help=(
-            "API key for remote providers. Falls back to env vars: "
-            "HF_TOKEN, OPENAI_API_KEY, ANTHROPIC_API_KEY"
+            "Name of environment variable containing the API key for remote "
+            "providers (e.g. --api-key-env OPENAI_API_KEY). Do NOT pass raw "
+            "keys on the command line. Falls back to HF_TOKEN, OPENAI_API_KEY, "
+            "ANTHROPIC_API_KEY automatically."
         ),
     )
     parser.add_argument(
@@ -189,6 +192,23 @@ def _resolve_device(args_device: str | None) -> str:
         return "cpu"
 
 
+def _resolve_api_key(args: argparse.Namespace) -> str | None:
+    """Resolve API key from an environment variable name (never from raw CLI input)."""
+    import os
+
+    env_var = getattr(args, "api_key_env", None)
+    if env_var is not None:
+        value = os.environ.get(env_var)
+        if value is None:
+            print(
+                f"WARNING: --api-key-env specified '{env_var}' but that "
+                f"environment variable is not set.",
+                file=sys.stderr,
+            )
+        return value
+    return None
+
+
 def _build_model_config(args: argparse.Namespace) -> "ModelConfig":
     """Build a ModelConfig from parsed CLI arguments."""
     from arth.core import ModelConfig
@@ -198,7 +218,7 @@ def _build_model_config(args: argparse.Namespace) -> "ModelConfig":
         name=args.model,
         device=device,
         provider=getattr(args, "provider", "transformer_lens"),
-        api_key=getattr(args, "api_key", None),
+        api_key=_resolve_api_key(args),
         base_url=getattr(args, "base_url", None),
         quantization=getattr(args, "quantization", None),
     )

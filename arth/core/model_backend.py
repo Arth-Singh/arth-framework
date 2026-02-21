@@ -83,7 +83,8 @@ class ModelBackend:
     def provider(self) -> BaseProvider:
         """Return the underlying provider instance, loading if necessary."""
         self._ensure_loaded()
-        assert self._provider is not None
+        if self._provider is None:
+            raise RuntimeError("Provider failed to initialise. Check model config and dependencies.")
         return self._provider
 
     # ------------------------------------------------------------------
@@ -147,7 +148,11 @@ class ModelBackend:
         """
         self.require_activations("get_residual_stream()")
         result = self.provider.get_residual_stream(prompts, layers)
-        assert result is not None
+        if result is None:
+            raise RuntimeError(
+                "Provider returned None from get_residual_stream(). "
+                "This should not happen when supports_activations is True."
+            )
         return result
 
     # ------------------------------------------------------------------
@@ -211,7 +216,11 @@ class ModelBackend:
         """
         self.require_logits("get_logits()")
         result = self.provider.get_logits(prompts)
-        assert result is not None
+        if result is None:
+            raise RuntimeError(
+                "Provider returned None from get_logits(). "
+                "This should not happen when supports_logits is True."
+            )
         return result
 
     # ------------------------------------------------------------------

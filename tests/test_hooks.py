@@ -58,6 +58,10 @@ class TestAblationHook:
         hook_fn(activation, hook=None)
         assert torch.allclose(activation, original)
 
+    def test_zero_direction_raises(self) -> None:
+        with pytest.raises(ValueError, match="near-zero norm"):
+            ablation_hook(torch.zeros(64))
+
 
 # ---------------------------------------------------------------------------
 # steering_hook
@@ -105,6 +109,10 @@ class TestSteeringHook:
         activation = torch.randn(1, 3, 64)
         result = hook_fn(activation, hook="mock_hook_object")
         assert isinstance(result, Tensor)
+
+    def test_zero_vector_raises(self) -> None:
+        with pytest.raises(ValueError, match="near-zero norm"):
+            steering_hook(torch.zeros(64))
 
 
 # ---------------------------------------------------------------------------

@@ -32,12 +32,27 @@ def pca(activations: Tensor, n_components: int = 1) -> tuple[Tensor, Tensor]:
     Returns:
         Tuple of (components, explained_variance) where components has shape
         (n_components, d_model) and explained_variance has shape (n_components,).
+
+    Raises:
+        ValueError: If activations has fewer than 2 samples or *n_components*
+            exceeds the effective rank.
     """
+    if activations.shape[0] < 2:
+        raise ValueError("PCA requires at least 2 samples.")
+
     centered = activations - activations.mean(dim=0, keepdim=True)
     U, S, Vh = torch.linalg.svd(centered, full_matrices=False)
+
+    available = min(S.shape[0], Vh.shape[0])
+    if n_components > available:
+        raise ValueError(
+            f"Requested {n_components} components but data has effective "
+            f"rank {available}."
+        )
+
     components = Vh[:n_components]
-    # Explained variance proportional to squared singular values
-    explained_variance = (S[:n_components] ** 2) / (activations.shape[0] - 1)
+    dof = max(activations.shape[0] - 1, 1)
+    explained_variance = (S[:n_components] ** 2) / dof
     return components, explained_variance
 
 
@@ -53,7 +68,12 @@ def project_out(vectors: Tensor, direction: Tensor) -> Tensor:
 
     Returns:
         Tensor with the same shape as *vectors*, with the *direction* component removed.
+
+    Raises:
+        ValueError: If *direction* has near-zero norm.
     """
+    if direction.norm().item() < 1e-8:
+        raise ValueError("Cannot project out a near-zero direction vector.")
     d = normalize(direction)
     # dot product along last dim, keep dims for broadcasting
     proj = (vectors @ d).unsqueeze(-1) * d
@@ -63,7 +83,8 @@ def project_out(vectors: Tensor, direction: Tensor) -> Tensor:
 def cosine_sim(a: Tensor, b: Tensor) -> Tensor:
     """Cosine similarity between tensors.
 
-    Supports both vector-vector and batch comparisons.
+    Supports both vector-vector and batch comparisons.  Returns 0.0 if
+    either input has near-zero norm (instead of NaN).
 
     Args:
         a: Tensor of shape (..., d).
@@ -72,18 +93,20 @@ def cosine_sim(a: Tensor, b: Tensor) -> Tensor:
     Returns:
         Cosine similarity scalar or tensor.
     """
-    a_norm = torch.nn.functional.normalize(a, dim=-1)
-    b_norm = torch.nn.functional.normalize(b, dim=-1)
-    return (a_norm * b_norm).sum(dim=-1)
+    eps = 1e-8
+    a_norm = a.norm(dim=-1, keepdim=True).clamp(min=eps)
+    b_norm = b.norm(dim=-1, keepdim=True).clamp(min=eps)
+    return ((a / a_norm) * (b / b_norm)).sum(dim=-1)
 
 
-def normalize(v: Tensor) -> Tensor:
+def normalize(v: Tensor, eps: float = 1e-8) -> Tensor:
     """L2 normalize a vector along the last dimension.
 
     Args:
         v: Tensor of arbitrary shape.
+        eps: Minimum norm to avoid division by zero.
 
     Returns:
         L2-normalized tensor with the same shape.
     """
-    return torch.nn.functional.normalize(v, dim=-1)
+    return torch.nn.functional.normalize(v, dim=-1, eps=eps)

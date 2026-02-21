@@ -56,10 +56,19 @@ class ConceptErasure(BaseTechnique):
                 best_layer = layer
 
         # Compute LEACE projection for the best layer
-        X = directions[best_layer].unsqueeze(0).float()  # (1, d_model)
-        # P = I - X^T (X X^T)^{-1} X
+        direction = directions[best_layer].float()
+        dir_norm = direction.norm()
+        if dir_norm < 1e-8:
+            raise ValueError(
+                f"Concept direction at layer {best_layer} has near-zero norm "
+                f"({dir_norm:.2e}). Cannot compute LEACE projection."
+            )
+
+        X = direction.unsqueeze(0)  # (1, d_model)
+        # P = I - X^T (X X^T + eps*I)^{-1} X   (eps for numerical stability)
         XXT = X @ X.T  # (1, 1)
-        XXT_inv = 1.0 / XXT  # scalar inverse for rank-1
+        XXT_reg = XXT + 1e-6 * torch.eye(XXT.shape[0], device=X.device)
+        XXT_inv = torch.linalg.inv(XXT_reg)
         projection = torch.eye(X.shape[1], device=X.device) - X.T @ XXT_inv @ X  # (d_model, d_model)
 
         artifact_path = output_dir / f"concept_erasure_{backend.config.name.replace('/', '_')}.pt"

@@ -172,5 +172,6 @@ class VLLMServerProvider(BaseProvider):
 
     @property
     def supports_logits(self) -> bool:
-        # vLLM supports logprobs (partial logit info) but not full tensors
-        return True
+        # vLLM supports logprobs (partial logit info) but not full logit tensors.
+        # Returning False because get_logits() cannot return a Tensor.
+        return False

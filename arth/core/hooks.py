@@ -23,7 +23,12 @@ def ablation_hook(direction: Tensor) -> Callable:
     Returns:
         A hook function suitable for use with ``model.run_with_hooks``
         or ``model.generate(fwd_hooks=...)``.
+
+    Raises:
+        ValueError: If *direction* has near-zero norm.
     """
+    if direction.norm().item() < 1e-8:
+        raise ValueError("Cannot create ablation hook: direction vector has near-zero norm.")
     d_f32 = torch.nn.functional.normalize(direction.float(), dim=-1)
 
     def hook_fn(activation: Tensor, hook: object) -> Tensor:
@@ -52,6 +57,8 @@ def steering_hook(
     Returns:
         A hook function.
     """
+    if vector.norm().item() < 1e-8:
+        raise ValueError("Cannot create steering hook: vector has near-zero norm.")
     scaled_f32 = (vector.float() * scale)
 
     def hook_fn(activation: Tensor, hook: object) -> Tensor:

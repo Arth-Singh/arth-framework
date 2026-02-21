@@ -54,6 +54,32 @@ class FinetuneAttack(BaseTechnique):
         except ImportError:
             return False
 
+    # Number of LoRA training steps per layer.
+    LORA_STEPS = 50
+
+    @staticmethod
+    def _detect_target_modules(model: Any, layer_idx: int) -> list[str]:
+        """Detect the correct LoRA-compatible module names for a given layer.
+
+        Checks for TransformerLens naming (blocks.N.attn.W_Q) first, then
+        falls back to common HuggingFace naming (model.layers.N.self_attn.q_proj).
+        """
+        # TransformerLens style
+        tl_names = [f"blocks.{layer_idx}.attn.W_Q", f"blocks.{layer_idx}.attn.W_K"]
+        # HuggingFace LLaMA / Mistral style
+        hf_llama = [f"model.layers.{layer_idx}.self_attn.q_proj", f"model.layers.{layer_idx}.self_attn.k_proj"]
+        # HuggingFace GPT-2 / GPT-Neo style (combined QKV)
+        hf_gpt2 = [f"transformer.h.{layer_idx}.attn.c_attn"]
+
+        all_param_names = {n for n, _ in model.named_modules()}
+
+        for candidate_set in (tl_names, hf_llama, hf_gpt2):
+            if all(any(c in full for full in all_param_names) for c in candidate_set):
+                return candidate_set
+
+        # Last resort: return TransformerLens names and let peft raise a clear error.
+        return tl_names
+
     def _extract_with_peft(
         self, backend, dataset, output_dir: Path, layers: list[int] | None, batch_size: int
     ) -> TechniqueResult:
@@ -77,8 +103,8 @@ class FinetuneAttack(BaseTechnique):
         layer_impacts: dict[int, float] = {}
 
         for layer_idx in layers:
-            # Configure LoRA for a single layer
-            target_modules = [f"blocks.{layer_idx}.attn.W_Q", f"blocks.{layer_idx}.attn.W_K"]
+            # Detect the correct module names for this model architecture
+            target_modules = self._detect_target_modules(model, layer_idx)
             lora_config = LoraConfig(
                 r=4,
                 lora_alpha=16,
@@ -94,7 +120,6 @@ class FinetuneAttack(BaseTechnique):
                 with torch.no_grad():
                     base_logits = model(tokens)[:, -1, :]
 
-                # Simple training loop (few steps)
                 optimizer = torch.optim.Adam(
                     [p for p in peft_model.parameters() if p.requires_grad], lr=1e-4
                 )
@@ -110,7 +135,7 @@ class FinetuneAttack(BaseTechnique):
                     del peft_model
                     continue
 
-                for _step in range(5):
+                for _step in range(self.LORA_STEPS):
                     logits = peft_model(tokens)[:, -1, :]
                     # Maximize target token probability
                     target_logits = logits[:, target_ids].mean()
@@ -132,7 +157,12 @@ class FinetuneAttack(BaseTechnique):
                 # Remove adapter
                 peft_model.disable_adapter_layers()
                 del peft_model
-            except Exception:
+            except Exception as exc:
+                import warnings
+                warnings.warn(
+                    f"LoRA failed on layer {layer_idx}: {exc}. "
+                    f"Target modules tried: {target_modules}"
+                )
                 layer_impacts[layer_idx] = 0.0
 
         impacts_tensor = torch.tensor([layer_impacts.get(l, 0.0) for l in layers])
@@ -206,17 +236,16 @@ class FinetuneAttack(BaseTechnique):
         target_logits = last_logits[:, target_ids].mean()
         target_logits.backward()
 
-        # Collect gradient norms per layer
+        # Collect gradient norms per layer (concatenate all grads, take combined norm)
         layer_grad_norms: dict[int, float] = {}
         for layer_idx in layers:
             block = model.blocks[layer_idx]
-            total_grad_norm = 0.0
-            n_params = 0
-            for param in block.parameters():
-                if param.grad is not None:
-                    total_grad_norm += param.grad.norm().item()
-                    n_params += 1
-            layer_grad_norms[layer_idx] = total_grad_norm / max(n_params, 1)
+            grads = [p.grad.flatten() for p in block.parameters() if p.grad is not None]
+            if grads:
+                combined = torch.cat(grads)
+                layer_grad_norms[layer_idx] = combined.norm().item()
+            else:
+                layer_grad_norms[layer_idx] = 0.0
 
         model.zero_grad()
 

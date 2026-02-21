@@ -64,9 +64,10 @@ class LogitLens(BaseTechnique):
 
         for layer in sorted(activations.keys()):
             acts = activations[layer].float()  # (n_prompts, d_model)
-            # Apply layer norm if available
+            # Apply layer norm if available.  ln_final expects (..., d_model)
+            # so we add a dummy seq dim, apply, then squeeze back.
             if hasattr(model, "ln_final"):
-                acts = model.ln_final(acts)
+                acts = model.ln_final(acts.unsqueeze(1)).squeeze(1)
             # Project through unembedding: (n_prompts, vocab_size)
             logits = acts @ W_U
             probs = torch.softmax(logits, dim=-1)

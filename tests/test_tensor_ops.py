@@ -96,6 +96,16 @@ class TestPCA:
         norm = components[0].norm().item()
         assert abs(norm - 1.0) < 1e-5
 
+    def test_single_sample_raises(self) -> None:
+        data = torch.randn(1, 16)
+        with pytest.raises(ValueError, match="at least 2"):
+            pca(data, n_components=1)
+
+    def test_too_many_components_raises(self) -> None:
+        data = torch.randn(5, 16)
+        with pytest.raises(ValueError, match="effective rank"):
+            pca(data, n_components=100)
+
 
 # ---------------------------------------------------------------------------
 # project_out
@@ -137,14 +147,12 @@ class TestProjectOut:
         dots = result @ d_norm
         assert dots.abs().max().item() < 1e-5
 
-    def test_zero_direction_returns_original(self) -> None:
-        """Edge case: zero direction should not change vectors (normalize handles it)."""
-        # NOTE: torch.nn.functional.normalize with a zero vector returns zero,
-        # so proj is zero and result == original.
+    def test_zero_direction_raises(self) -> None:
+        """Edge case: zero direction should raise ValueError."""
         direction = torch.zeros(64)
         vectors = torch.randn(3, 64)
-        result = project_out(vectors, direction)
-        assert torch.allclose(result, vectors, atol=1e-6)
+        with pytest.raises(ValueError, match="near-zero"):
+            project_out(vectors, direction)
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +191,12 @@ class TestCosineSim:
         sim_orig = cosine_sim(a, b)
         sim_scaled = cosine_sim(a * 5.0, b * 0.3)
         assert torch.allclose(sim_orig, sim_scaled, atol=1e-5)
+
+    def test_zero_vector_returns_zero(self) -> None:
+        a = torch.zeros(32)
+        b = torch.randn(32)
+        result = cosine_sim(a, b)
+        assert abs(result.item()) < 1e-6
 
 
 # ---------------------------------------------------------------------------

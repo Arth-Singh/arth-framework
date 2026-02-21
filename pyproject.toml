@@ -28,8 +28,13 @@ dashboard = ["dash>=2.14.0", "plotly>=5.18.0", "dash-bootstrap-components>=1.5.0
 finetune = ["peft>=0.7.0", "bitsandbytes>=0.41.0"]
 openai = ["openai>=1.0"]
 vllm = ["vllm>=0.3.0"]
+eval = [
+    "openai>=1.0",
+    "transformers>=4.35.0",
+    "sentence-transformers>=2.2.0",
+]
 all = [
-    "arth-mech-interp[nnsight,sae,dashboard,finetune,openai,vllm]",
+    "arth-mech-interp[nnsight,sae,dashboard,finetune,openai,vllm,eval]",
 ]
 dev = [
     "pytest>=7.0",

@@ -1,10 +1,14 @@
-"""Evaluation: scoring, metrics, and reporting."""
+"""Evaluation: scoring, metrics, reporting, and optional advanced scorers."""
 
 from arth.eval.scorer import Scorer
 from arth.eval.metrics import (
     attack_success_rate,
     coherence_score,
     compute_all_metrics,
+    harmful_compliance_rate,
+    mean_confidence,
+    mean_similarity,
+    mean_toxicity,
     refusal_delta,
     refusal_rate,
 )
@@ -16,6 +20,10 @@ __all__ = [
     "attack_success_rate",
     "coherence_score",
     "compute_all_metrics",
+    "harmful_compliance_rate",
+    "mean_confidence",
+    "mean_similarity",
+    "mean_toxicity",
     "refusal_delta",
     "refusal_rate",
 ]

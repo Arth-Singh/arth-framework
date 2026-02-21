@@ -480,8 +480,8 @@ If you use Arth in your research, please cite:
 ```bibtex
 @software{arth2024,
   title     = {Arth: Adversarial Red Teaming Harness for Mechanistic Interpretability},
-  author    = {Arth Contributors},
-  year      = {2024},
+  author    = {Arth Singh},
+  year      = {2026},
   url       = {https://github.com/your-org/arth-mech-interp},
   version   = {0.1.0},
   note      = {A toolkit for probing and stress-testing language model safety
